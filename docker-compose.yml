@@ -1,0 +1,24 @@
+services:
+  backend:
+    build: ./backend
+    container_name: allegro-oms-backend
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - JWT_SECRET=production-secret-change-me
+    networks:
+      - allegro-network
+
+  frontend:
+    build: ./frontend
+    container_name: allegro-oms-frontend
+    ports:
+      - "3000:3000"
+    networks:
+      - allegro-network
+
+networks:
+  allegro-network:
+    driver: bridge
