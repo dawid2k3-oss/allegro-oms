@@ -1,27 +1,25 @@
-# Backend Dockerfile
+# Backend Dockerfile - Fixed TypeScript build
 FROM node:18-alpine
 
-# Ustawienie katalogu roboczego
 WORKDIR /app
 
-# Kopiowanie package.json i package-lock.json
+# Kopiuj package files
 COPY package*.json ./
 
-# Instalacja dependencies
-RUN npm ci --only=production
+# Instaluj WSZYSTKIE dependencies (włącznie z devDependencies dla TypeScript)
+RUN npm ci
 
-# Kopiowanie kodu źródłowego
+# Kopiuj kod źródłowy
 COPY . .
 
-# Budowanie TypeScript
+# Zbuduj TypeScript aplikację
 RUN npm run build
+
+# Usuń devDependencies po build (opcjonalne - oszczędza miejsce)
+RUN npm prune --production
 
 # Expose port
 EXPOSE 3001
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD curl -f http://localhost:3001/health || exit 1
-
-# Uruchomienie aplikacji
+# Uruchom zbudowaną aplikację
 CMD ["npm", "start"]
