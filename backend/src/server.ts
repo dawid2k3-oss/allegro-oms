@@ -1,84 +1,99 @@
 import express from 'express';
 import cors from 'cors';
-import helmet from 'helmet';
-import morgan from 'morgan';
-import dotenv from 'dotenv';
-
-dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 3001;
+const port = process.env.PORT || 8080;
 
-// Middleware
-app.use(helmet());
-app.use(cors());
-app.use(morgan('combined'));
+// 🚀 PRODUCTION CORS - dodajemy frontend URL
+app.use(cors({
+  origin: [
+    'http://localhost:3000',  // Development
+    'https://frontend-production-bcf2.up.railway.app'  // Production frontend URL
+  ],
+  credentials: true
+}));
+
 app.use(express.json());
 
-// Mock database
+// Mock users data
 const users = [
-  {
-    id: 1,
-    email: 'admin@test.pl',
-    password: 'admin123',
-    name: 'Administrator',
-    company: 'AlegroOMS',
-    role: 'admin'
-  },
-  {
-    id: 2,
-    email: 'user@test.pl',
-    password: 'user123',
-    name: 'Jan Kowalski',
-    company: 'TestShop Sp. z o.o.',
-    role: 'user'
-  }
+  { id: 1, email: 'admin@test.pl', password: 'admin123', role: 'admin' },
+  { id: 2, email: 'user@test.pl', password: 'user123', role: 'user' }
 ];
 
-// Routes
-app.post('/api/auth/login', (req, res) => {
-  const { email, password } = req.body;
-  
-  console.log('Login attempt:', email);
-  
-  const user = users.find(u => u.email === email);
-  if (!user || user.password !== password) {
-    return res.status(401).json({ error: 'Invalid credentials' });
-  }
-  
-  res.json({
-    user: {
-      id: user.id,
-      email: user.email,
-      name: user.name,
-      company: user.company,
-      role: user.role
-    },
-    token: 'mock-jwt-token'
-  });
-});
+// Mock orders data
+const orders = [
+  { id: 1, orderNumber: 'ORD-001', status: 'pending', amount: 299.99, customer: 'Jan Kowalski' },
+  { id: 2, orderNumber: 'ORD-002', status: 'completed', amount: 499.50, customer: 'Anna Nowak' },
+  { id: 3, orderNumber: 'ORD-003', status: 'processing', amount: 150.00, customer: 'Piotr Wiśniewski' },
+  { id: 4, orderNumber: 'ORD-004', status: 'completed', amount: 750.25, customer: 'Maria Kowalczyk' },
+  { id: 5, orderNumber: 'ORD-005', status: 'pending', amount: 320.80, customer: 'Tomasz Lewandowski' }
+];
 
-app.get('/api/orders', (req, res) => {
-  res.json([
-    {
-      id: 'ALG-2025-001234',
-      status: 'new',
-      customer: { name: 'Anna Nowak' },
-      amount: 159.99,
-      createdAt: new Date().toISOString()
-    }
-  ]);
-});
-
+// Health check endpoint
 app.get('/health', (req, res) => {
   res.json({ 
-    status: 'ok', 
+    status: 'OK', 
+    message: '🚀 AlegroOMS Backend is running',
     timestamp: new Date().toISOString(),
-    message: 'AlegroOMS Backend is running!'
+    environment: 'production'
   });
 });
 
-app.listen(PORT, () => {
-  console.log(`🚀 AlegroOMS Backend running on http://localhost:${PORT}`);
-  console.log(`📊 Health check: http://localhost:${PORT}/health`);
+// Login endpoint
+app.post('/api/auth/login', (req, res) => {
+  const { email, password } = req.body;
+
+  // Find user
+  const user = users.find(u => u.email === email && u.password === password);
+
+  if (user) {
+    // Remove password from response
+    const { password: _, ...userWithoutPassword } = user;
+    res.json({
+      success: true,
+      user: userWithoutPassword,
+      message: 'Zalogowano pomyślnie'
+    });
+  } else {
+    res.status(401).json({
+      success: false,
+      message: 'Nieprawidłowe dane logowania'
+    });
+  }
 });
+
+// Orders endpoint
+app.get('/api/orders', (req, res) => {
+  res.json(orders);
+});
+
+// 404 handler
+app.use('*', (req, res) => {
+  res.status(404).json({
+    error: 'Endpoint not found',
+    message: `Cannot ${req.method} ${req.originalUrl}`,
+    availableEndpoints: [
+      'GET /health',
+      'POST /api/auth/login', 
+      'GET /api/orders'
+    ]
+  });
+});
+
+// Error handler
+app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+  console.error('Error:', err);
+  res.status(500).json({
+    error: 'Internal server error',
+    message: 'Something went wrong'
+  });
+});
+
+app.listen(port, () => {
+  console.log(`🚀 AlegroOMS Backend running on http://localhost:${port}`);
+  console.log(`📡 Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`🌐 CORS enabled for frontend: https://frontend-production-bcf2.up.railway.app`);
+});
+
+export default app;

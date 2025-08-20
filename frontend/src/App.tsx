@@ -2,156 +2,182 @@ import React, { useState } from 'react';
 import axios from 'axios';
 import './App.css';
 
+// 🚀 PRODUCTION BACKEND URL
+const API_BASE_URL = 'https://allegro-oms-production.up.railway.app';
+
 interface User {
   id: number;
   email: string;
-  name: string;
-  company: string;
   role: string;
 }
 
-function App() {
-  const [user, setUser] = useState<User | null>(null);
-  const [email, setEmail] = useState('user@test.pl');
-  const [password, setPassword] = useState('user123');
-  const [loading, setLoading] = useState(false);
+interface Order {
+  id: number;
+  orderNumber: string;
+  status: string;
+  amount: number;
+  customer: string;
+}
 
-  const login = async (e: React.FormEvent) => {
+function App() {
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    
+    setError('');
+
     try {
-      const response = await axios.post('http://localhost:3001/api/auth/login', {
+      // 🔥 UŻYWAMY PRODUCTION URL ZAMIAST LOCALHOST
+      const response = await axios.post(`${API_BASE_URL}/api/auth/login`, {
         email,
-        password
+        password,
       });
-      
+
       setUser(response.data.user);
-      localStorage.setItem('token', response.data.token);
-      console.log('Login successful:', response.data);
+      setIsLoggedIn(true);
+      await fetchOrders();
     } catch (error) {
-      console.error('Login error:', error);
-      alert('Login failed! Sprawdź email i hasło.');
+      console.error('Login failed:', error);
+      setError('Błąd logowania. Sprawdź dane i spróbuj ponownie.');
     } finally {
       setLoading(false);
     }
   };
 
-  const logout = () => {
-    setUser(null);
-    localStorage.removeItem('token');
+  const fetchOrders = async () => {
+    try {
+      // 🔥 UŻYWAMY PRODUCTION URL ZAMIAST LOCALHOST
+      const response = await axios.get(`${API_BASE_URL}/api/orders`);
+      setOrders(response.data);
+    } catch (error) {
+      console.error('Failed to fetch orders:', error);
+      setError('Błąd podczas pobierania zamówień.');
+    }
   };
 
-  if (user) {
+  const handleLogout = () => {
+    setIsLoggedIn(false);
+    setUser(null);
+    setOrders([]);
+    setEmail('');
+    setPassword('');
+    setError('');
+  };
+
+  if (!isLoggedIn) {
     return (
       <div className="App">
-        <header className="App-header">
-          <h1>🎉 AlegroOMS - Zalogowany!</h1>
-          <div style={{ 
-            background: 'white', 
-            color: 'black', 
-            padding: '30px', 
-            borderRadius: '15px', 
-            margin: '20px',
-            maxWidth: '500px'
-          }}>
-            <h2>Witaj, {user.name}! 👋</h2>
-            <div style={{ textAlign: 'left', margin: '20px 0' }}>
-              <p><strong>📧 Email:</strong> {user.email}</p>
-              <p><strong>🏢 Firma:</strong> {user.company}</p>
-              <p><strong>👤 Rola:</strong> {user.role}</p>
-              <p><strong>🆔 ID:</strong> {user.id}</p>
+        <div className="login-container">
+          <div className="login-form">
+            <h1>🛒 AlegroOMS</h1>
+            <h2>System Zarządzania Zamówieniami</h2>
+            
+            {error && <div className="error-message">{error}</div>}
+            
+            <form onSubmit={handleLogin}>
+              <div className="form-group">
+                <input
+                  type="email"
+                  placeholder="Email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  disabled={loading}
+                />
+              </div>
+              <div className="form-group">
+                <input
+                  type="password"
+                  placeholder="Hasło"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  disabled={loading}
+                />
+              </div>
+              <button type="submit" disabled={loading}>
+                {loading ? '⏳ Logowanie...' : '🚀 Zaloguj'}
+              </button>
+            </form>
+            
+            <div className="demo-accounts">
+              <h3>Demo Konta:</h3>
+              <p><strong>Admin:</strong> admin@test.pl / admin123</p>
+              <p><strong>User:</strong> user@test.pl / user123</p>
             </div>
-            <button 
-              onClick={logout} 
-              style={{ 
-                padding: '12px 24px', 
-                background: '#dc3545',
-                color: 'white',
-                border: 'none',
-                borderRadius: '8px',
-                cursor: 'pointer',
-                fontSize: '16px'
-              }}
-            >
-              Wyloguj się
-            </button>
           </div>
-        </header>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="App">
-      <header className="App-header">
-        <h1>🔐 AlegroOMS - Login</h1>
-        <form onSubmit={login} style={{ 
-          background: 'white', 
-          color: 'black', 
-          padding: '40px', 
-          borderRadius: '15px', 
-          margin: '20px',
-          minWidth: '350px'
-        }}>
-          <div style={{ marginBottom: '20px', textAlign: 'left' }}>
-            <label>📧 Email:</label>
-            <input 
-              type="email" 
-              value={email} 
-              onChange={(e) => setEmail(e.target.value)}
-              style={{ 
-                padding: '12px', 
-                width: '100%', 
-                borderRadius: '8px',
-                border: '2px solid #ddd',
-                fontSize: '16px',
-                marginTop: '5px'
-              }}
-              required
-            />
+      <div className="dashboard">
+        <header className="dashboard-header">
+          <h1>🛒 AlegroOMS Dashboard</h1>
+          <div className="user-info">
+            <span>Witaj, {user?.email} ({user?.role})</span>
+            <button onClick={handleLogout} className="logout-btn">
+              Wyloguj
+            </button>
           </div>
-          
-          <div style={{ marginBottom: '25px', textAlign: 'left' }}>
-            <label>🔒 Hasło:</label>
-            <input 
-              type="password" 
-              value={password} 
-              onChange={(e) => setPassword(e.target.value)}
-              style={{ 
-                padding: '12px', 
-                width: '100%', 
-                borderRadius: '8px',
-                border: '2px solid #ddd',
-                fontSize: '16px',
-                marginTop: '5px'
-              }}
-              required
-            />
+        </header>
+
+        <main className="dashboard-content">
+          <div className="stats-grid">
+            <div className="stat-card">
+              <h3>📦 Zamówienia</h3>
+              <div className="stat-number">{orders.length}</div>
+            </div>
+            <div className="stat-card">
+              <h3>💰 Przychody</h3>
+              <div className="stat-number">
+                {orders.reduce((sum, order) => sum + order.amount, 0).toLocaleString('pl-PL')} zł
+              </div>
+            </div>
+            <div className="stat-card">
+              <h3>⚡ Status</h3>
+              <div className="stat-number">Aktywny</div>
+            </div>
           </div>
-          
-          <button 
-            type="submit" 
-            disabled={loading}
-            style={{ 
-              padding: '15px 30px', 
-              background: loading ? '#ccc' : '#007bff', 
-              color: 'white', 
-              border: 'none', 
-              borderRadius: '8px',
-              width: '100%',
-              fontSize: '16px',
-              cursor: loading ? 'not-allowed' : 'pointer'
-            }}
-          >
-            {loading ? '⏳ Logowanie...' : '🚀 Zaloguj się'}
-          </button>
-          
-          <p style={{ marginTop: '20px', fontSize: '14px' }}>
-            🧪 Test: user@test.pl / user123
-          </p>
-        </form>
-      </header>
+
+          <div className="orders-section">
+            <h2>📋 Ostatnie Zamówienia</h2>
+            <div className="orders-table">
+              <div className="table-header">
+                <div>Nr Zamówienia</div>
+                <div>Klient</div>
+                <div>Status</div>
+                <div>Kwota</div>
+              </div>
+              {orders.map((order) => (
+                <div key={order.id} className="table-row">
+                  <div>{order.orderNumber}</div>
+                  <div>{order.customer}</div>
+                  <div>
+                    <span className={`status ${order.status.toLowerCase()}`}>
+                      {order.status}
+                    </span>
+                  </div>
+                  <div>{order.amount.toLocaleString('pl-PL')} zł</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </main>
+
+        <footer className="dashboard-footer">
+          <p>🚀 AlegroOMS v1.0 - Production Ready</p>
+        </footer>
+      </div>
     </div>
   );
 }
